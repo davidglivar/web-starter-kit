@@ -20,17 +20,22 @@
 'use strict';
 
 // Include Gulp & Tools We'll Use
-var gulp = require('gulp');
-var $ = require('gulp-load-plugins')();
-var del = require('del');
-var runSequence = require('run-sequence');
-var browserSync = require('browser-sync');
-var pagespeed = require('psi');
-var reload = browserSync.reload;
+var $ = require('gulp-load-plugins')()
+  , browserify = require('browserify')
+  , browserSync = require('browser-sync')
+  , del = require('del')
+  , gulp = require('gulp')
+  , pagespeed = require('psi')
+  , reactify = require('reactify')
+  , reload = browserSync.reload
+  , runSequence = require('run-sequence')
+  , source = require('vinyl-source-stream')
+  , stylus = require('stylus')
+  , watchify = require('watchify');
 
 var AUTOPREFIXER_BROWSERS = [
-  'ie >= 10',
-  'ie_mob >= 10',
+  'ie >= 9',
+  'ie_mob >= 9',
   'ff >= 30',
   'chrome >= 34',
   'safari >= 7',
@@ -40,14 +45,35 @@ var AUTOPREFIXER_BROWSERS = [
   'bb >= 10'
 ];
 
+// Include any directory that contains and index file
+var SERVER_BASES = [
+  '.tmp',
+  'app',
+  'styleguide'
+];
+
 // Lint JavaScript
-gulp.task('jshint', function () {
-  return gulp.src('app/scripts/**/*.js')
+gulp.task('scripts:jshint', function () {
+  return gulp.src(['app/scripts/**/*.js', '!app/scripts/main.bundle.js'])
     .pipe(reload({stream: true, once: true}))
     .pipe($.jshint())
     .pipe($.jshint.reporter('jshint-stylish'))
     .pipe($.if(!browserSync.active, $.jshint.reporter('fail')));
 });
+
+// Bundle dependencies with Browserify
+gulp.task('scripts:bundle', function () {
+  var bundle = global.isWatching ? watchify : browserify;
+  return bundle()
+    .transform(reactify)
+    .require(require.resolve('./app/scripts/main.js'), { entry: true })
+    .bundle({ debug: true })
+    .pipe(source('main.bundle.js'))
+    .pipe(gulp.dest('./app/scripts'));
+});
+
+// Output Final Scripts
+gulp.task('scripts', ['scripts:jshint', 'scripts:bundle']);
 
 // Optimize Images
 gulp.task('images', function () {
@@ -74,7 +100,6 @@ gulp.task('fonts', function () {
     .pipe($.size({title: 'fonts'}));
 });
 
-
 // Automatically Prefix CSS
 gulp.task('styles:css', function () {
   return gulp.src('app/styles/**/*.css')
@@ -84,36 +109,18 @@ gulp.task('styles:css', function () {
     .pipe($.size({title: 'styles:css'}));
 });
 
-// Compile Sass For Style Guide Components (app/styles/components)
-gulp.task('styles:components', function () {
-  return gulp.src('app/styles/components/components.scss')
-    .pipe($.rubySass({
-      style: 'expanded',
-      precision: 10,
-      loadPath: ['app/styles/components']
-    }))
-    .on('error', console.error.bind(console))
-    .pipe($.autoprefixer(AUTOPREFIXER_BROWSERS))
-    .pipe(gulp.dest('app/styles/components'))
-    .pipe($.size({title: 'styles:components'}));
-});
-
-// Compile Any Other Sass Files You Added (app/styles)
-gulp.task('styles:scss', function () {
-  return gulp.src(['app/styles/**/*.scss', '!app/styles/components/components.scss'])
-    .pipe($.rubySass({
-      style: 'expanded',
-      precision: 10,
-      loadPath: ['app/styles']
-    }))
+// Process Stylus files
+gulp.task('styles:stylus', function () {
+  return gulp.src(['app/styles/**/*.styl'])
+    .pipe($.stylus({ errors: true }))
     .on('error', console.error.bind(console))
     .pipe($.autoprefixer(AUTOPREFIXER_BROWSERS))
     .pipe(gulp.dest('.tmp/styles'))
-    .pipe($.size({title: 'styles:scss'}));
+    .pipe($.size({ title: 'styles:stylus' }));
 });
 
 // Output Final CSS Styles
-gulp.task('styles', ['styles:components', 'styles:scss', 'styles:css']);
+gulp.task('styles', ['styles:stylus', 'styles:css']);
 
 // Scan Your HTML For Assets & Optimize Them
 gulp.task('html', function () {
@@ -140,7 +147,7 @@ gulp.task('html', function () {
     .pipe($.useref.restore())
     .pipe($.useref())
     // Update Production Style Guide Paths
-    .pipe($.replace('components/components.css', 'components/main.min.css'))
+    .pipe($.replace('main.css', 'main.min.css'))
     // Minify Any HTML
     .pipe($.if('*.html', $.minifyHtml()))
     // Output Files
@@ -156,14 +163,14 @@ gulp.task('serve', function () {
   browserSync({
     notify: false,
     server: {
-      baseDir: ['.tmp', 'app']
+      baseDir: SERVER_BASES
     }
   });
 
   gulp.watch(['app/**/*.html'], reload);
-  gulp.watch(['app/styles/**/*.scss'], ['styles:components', 'styles:scss']);
+  gulp.watch(['app/styles/**/*.styl'], ['styles:stylus']);
   gulp.watch(['{.tmp,app}/styles/**/*.css'], ['styles:css', reload]);
-  gulp.watch(['app/scripts/**/*.js'], ['jshint']);
+  gulp.watch(['app/scripts/**/*.js'], ['scripts', reload]);
   gulp.watch(['app/images/**/*'], reload);
 });
 
@@ -179,7 +186,7 @@ gulp.task('serve:dist', ['default'], function () {
 
 // Build Production Files, the Default Task
 gulp.task('default', ['clean'], function (cb) {
-  runSequence('styles', ['jshint', 'html', 'images', 'fonts', 'copy'], cb);
+  runSequence('styles', 'scripts', ['html', 'images', 'fonts', 'copy'], cb);
 });
 
 // Run PageSpeed Insights

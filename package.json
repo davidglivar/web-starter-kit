@@ -1,6 +1,7 @@
 {
   "devDependencies": {
     "browser-sync": "^1.1.2",
+    "browserify": "^4.2.0",
     "del": "^0.1.1",
     "gulp": "^3.8.5",
     "gulp-autoprefixer": "^0.0.8",
@@ -16,14 +17,19 @@
     "gulp-replace": "^0.4.0",
     "gulp-ruby-sass": "^0.5.0",
     "gulp-size": "^0.4.0",
+    "gulp-stylus": "^1.0.5",
     "gulp-uglify": "^0.3.1",
     "gulp-uncss": "^0.4.4",
     "gulp-useref": "^0.5.0",
     "jshint-stylish": "^0.3.0",
     "opn": "^0.1.2",
     "psi": "^0.1.1",
+    "reactify": "^0.13.1",
     "require-dir": "^0.1.0",
-    "run-sequence": "^0.3.6"
+    "run-sequence": "^0.3.6",
+    "stylus": "^0.47.1",
+    "vinyl-source-stream": "^0.1.1",
+    "watchify": "^0.10.2"
   },
   "engines": {
     "node": ">=0.10.0"
