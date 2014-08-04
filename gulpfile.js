@@ -26,7 +26,6 @@ var $ = require('gulp-load-plugins')()
   , del = require('del')
   , gulp = require('gulp')
   , pagespeed = require('psi')
-  , reactify = require('reactify')
   , reload = browserSync.reload
   , runSequence = require('run-sequence')
   , source = require('vinyl-source-stream')
@@ -65,7 +64,6 @@ gulp.task('scripts:jshint', function () {
 gulp.task('scripts:bundle', function () {
   var bundle = global.isWatching ? watchify : browserify;
   return bundle()
-    .transform(reactify)
     .require(require.resolve('./app/scripts/main.js'), { entry: true })
     .bundle({ debug: true })
     .pipe(source('main.bundle.js'))
